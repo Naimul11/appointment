@@ -1,87 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Appointment Booking</title>
-  <script type="module">
-    // 1️⃣ Import Firebase modules
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+    <meta charset="UTF-8">
+    <title>Appointment Booking</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-    // 2️⃣ Firebase configuration
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
+        // 🔹 Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZRLHm66lMaw_BhyUY7g8PrSpZyz66rbA",
+            authDomain: "suerp-b4d48.firebaseapp.com",
+            projectId: "suerp-b4d48",
+            storageBucket: "suerp-b4d48.firebasestorage.app",
+            messagingSenderId: "1094395585145",
+            appId: "1:1094395585145:web:258ee6033c091cfdfbaaa8",
+            measurementId: "G-PQDRB07QXC"
+        };
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-    // 3️⃣ Get user-id from query string
-    const params = new URLSearchParams(window.location.search);
-    const userId = params.get("user");
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get("user");
+        const teacherName = params.get("teacher");
 
-    if (!userId) {
-      document.body.innerHTML = "<h2>Error: user-id not provided in URL.</h2>";
-      throw new Error("user-id not found in URL");
-    }
+        const messageDiv = document.getElementById("message");
+        const form = document.getElementById("form");
 
-    // 4️⃣ Handle form submission
-    async function submitAppointment(e) {
-      e.preventDefault();
+        if (!userId || !teacherName) {
+            messageDiv.textContent = "Invalid link!";
+            messageDiv.style.color = "red";
+            form.style.display = "none";
+            throw new Error("Missing user or teacher");
+        }
 
-      const date = document.getElementById("date").value;
-      const time = document.getElementById("time").value;
+        const appointmentRef = doc(db, "students", userId, "appointments", teacherName);
 
-      if (!date || !time) {
-        alert("Please select both date and time.");
-        return;
-      }
+        // Check if an appointment already exists for today
+        async function checkExisting() {
+            const today = new Date().toISOString().split("T")[0];
+            const docSnap = await getDoc(appointmentRef);
 
-      try {
-        // Add document under students/{user-id}/appointments
-        await addDoc(collection(db, "students", userId, "appointments"), {
-          date,
-          time,
-          createdAt: new Date().toISOString()
-        });
+            if (docSnap.exists() && docSnap.data().submitDate === today) {
+                messageDiv.textContent = "You have already submitted an appointment for today!";
+                messageDiv.style.color = "green";
+                form.style.display = "none";
+            } else {
+                messageDiv.textContent = ""; // no message
+            }
+        }
 
-        alert("Appointment saved successfully!");
-        document.getElementById("form").reset();
-      } catch (err) {
-        console.error(err);
-        alert("Error saving appointment");
-      }
-    }
+        checkExisting(); // run on page load
 
-    // Add event listener after DOM loaded
-    window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("form").addEventListener("submit", submitAppointment);
-    });
-  </script>
+        async function submitAppointment(e) {
+            e.preventDefault();
 
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
-    input, button { width: 100%; padding: 10px; margin: 5px 0; font-size: 16px; }
-    button { cursor: pointer; background-color: #4CAF50; color: white; border: none; }
-    button:hover { background-color: #45a049; }
-  </style>
+            const date = document.getElementById("date").value;
+            const time = document.getElementById("time").value;
+
+            if (!date || !time) {
+                messageDiv.textContent = "Please select both date and time.";
+                messageDiv.style.color = "red";
+                return;
+            }
+
+            const today = new Date().toISOString().split("T")[0];
+            const docSnap = await getDoc(appointmentRef);
+
+            if (docSnap.exists() && docSnap.data().submitDate === today) {
+                messageDiv.textContent = "You have already submitted an appointment for today!";
+                messageDiv.style.color = "red";
+                form.style.display = "none";
+                return;
+            }
+
+            try {
+                await setDoc(appointmentRef, {
+                    date,
+                    time,
+                    submitDate: today,
+                    createdAt: new Date().toISOString()
+                });
+
+                messageDiv.textContent = `Appointment approved✅ Date: ${date}, Time: ${time}`;
+                messageDiv.style.color = "green";
+                form.style.display = "none";
+            } catch (err) {
+                console.error(err);
+                messageDiv.textContent = "Error saving appointment.";
+                messageDiv.style.color = "red";
+            }
+        }
+
+        form.addEventListener("submit", submitAppointment);
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        h2 {
+            color: #333;
+            margin: 0 0 30px 0;
+            font-weight: 600;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        #form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        label {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+        
+        .input-wrapper {
+            position: relative;
+            background: #f7f8fc;
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .input-wrapper:hover {
+            background: #eef0f8;
+            border-color: #667eea;
+        }
+
+        .input-wrapper:focus-within {
+            background: white;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-icon {
+            color: #667eea;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-group input[type="date"],
+        .input-group input[type="time"] {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .input-group input[type="date"]::-webkit-calendar-picker-indicator,
+        .input-group input[type="time"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        button {
+            width: 100%;
+            padding: 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #message {
+            margin-top: 20px;
+            font-weight: 600;
+            text-align: center;
+            min-height: 24px;
+            color: #667eea;
+            letter-spacing: 0.3px;
+            font-size: 14px;
+        }
+    </style>
 </head>
+
 <body>
-  <h2>Book Appointment</h2>
-  <form id="form">
-    <label for="date">Select Date:</label>
-    <input type="date" id="date" required />
+    <div class="container">
+        <h2>📅 Mentor Meeting</h2>
+        <form id="form">
+            <div class="input-group">
+                <label for="date">Select Date</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <svg width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <input type="date" id="date" required />
+                </div>
+            </div>
 
-    <label for="time">Select Time:</label>
-    <input type="time" id="time" required />
+            <div class="input-group">
+                <label for="time">Select Time</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <svg width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <input type="time" id="time" required />
+                </div>
+            </div>
 
-    <button type="submit">Submit</button>
-  </form>
+            <button type="submit">Approve Request</button>
+        </form>
+
+        <div id="message"></div>
+    </div>
 </body>
+
 </html>
