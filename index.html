@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Appointment Booking</title>
+  <script type="module">
+    // 1️⃣ Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    // 2️⃣ Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 3️⃣ Get user-id from query string
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("user");
+
+    if (!userId) {
+      document.body.innerHTML = "<h2>Error: user-id not provided in URL.</h2>";
+      throw new Error("user-id not found in URL");
+    }
+
+    // 4️⃣ Handle form submission
+    async function submitAppointment(e) {
+      e.preventDefault();
+
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+
+      if (!date || !time) {
+        alert("Please select both date and time.");
+        return;
+      }
+
+      try {
+        // Add document under students/{user-id}/appointments
+        await addDoc(collection(db, "students", userId, "appointments"), {
+          date,
+          time,
+          createdAt: new Date().toISOString()
+        });
+
+        alert("Appointment saved successfully!");
+        document.getElementById("form").reset();
+      } catch (err) {
+        console.error(err);
+        alert("Error saving appointment");
+      }
+    }
+
+    // Add event listener after DOM loaded
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("form").addEventListener("submit", submitAppointment);
+    });
+  </script>
+
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
+    input, button { width: 100%; padding: 10px; margin: 5px 0; font-size: 16px; }
+    button { cursor: pointer; background-color: #4CAF50; color: white; border: none; }
+    button:hover { background-color: #45a049; }
+  </style>
+</head>
+<body>
+  <h2>Book Appointment</h2>
+  <form id="form">
+    <label for="date">Select Date:</label>
+    <input type="date" id="date" required />
+
+    <label for="time">Select Time:</label>
+    <input type="time" id="time" required />
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>
