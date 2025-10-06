@@ -22,9 +22,31 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+
+        // Decrypt q param (Base64) to get userId and teacherName
+        function decodeBase64(str) {
+            try {
+                return decodeURIComponent(escape(window.atob(str)));
+            } catch (e) {
+                return '';
+            }
+        }
+
         const params = new URLSearchParams(window.location.search);
-        const userId = params.get("user");
-        const teacherName = params.get("teacher");
+        let userId = null;
+        let teacherName = null;
+        if (params.has('q')) {
+            const decoded = decodeBase64(params.get('q'));
+            // Expecting format: userId:teacherName
+            const parts = decoded.split(':');
+            if (parts.length === 2) {
+                userId = parts[0];
+                teacherName = parts[1];
+            }
+        } else {
+            userId = params.get("user");
+            teacherName = params.get("teacher");
+        }
 
         const messageDiv = document.getElementById("message");
         const form = document.getElementById("form");
@@ -36,10 +58,19 @@
             throw new Error("Missing user or teacher");
         }
 
+        const studentRef = doc(db, "students", userId);
         const appointmentRef = doc(db, "students", userId, "appointments", teacherName);
 
-        // Check if an appointment already exists for today
+        // Check if student exists and if an appointment already exists for today
         async function checkExisting() {
+            const studentSnap = await getDoc(studentRef);
+            if (!studentSnap.exists()) {
+                messageDiv.textContent = "Invalid user: student does not exist.";
+                messageDiv.style.color = "red";
+                form.style.display = "none";
+                return;
+            }
+
             const today = new Date().toISOString().split("T")[0];
             const docSnap = await getDoc(appointmentRef);
 
@@ -57,6 +88,14 @@
         async function submitAppointment(e) {
             e.preventDefault();
 
+            const studentSnap = await getDoc(studentRef);
+            if (!studentSnap.exists()) {
+                messageDiv.textContent = "Invalid user: student does not exist.";
+                messageDiv.style.color = "red";
+                form.style.display = "none";
+                return;
+            }
+
             const date = document.getElementById("date").value;
             const time = document.getElementById("time").value;
 
@@ -70,7 +109,7 @@
             const docSnap = await getDoc(appointmentRef);
 
             if (docSnap.exists() && docSnap.data().submitDate === today) {
-                messageDiv.textContent = "You have already submitted an appointment for today!";
+                messageDiv.textContent = "An appointment has already been made for today!";
                 messageDiv.style.color = "red";
                 form.style.display = "none";
                 return;
@@ -84,7 +123,7 @@
                     createdAt: new Date().toISOString()
                 });
 
-                messageDiv.textContent = `Appointment approved✅ Date: ${date}, Time: ${time}`;
+                messageDiv.innerHTML = `Appointment approved✅<br><br>Date: ${date}, Time: ${time}`;
                 messageDiv.style.color = "green";
                 form.style.display = "none";
             } catch (err) {
