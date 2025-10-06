@@ -75,7 +75,7 @@
             const docSnap = await getDoc(appointmentRef);
 
             if (docSnap.exists() && docSnap.data().submitDate === today) {
-                messageDiv.textContent = "You have already submitted an appointment for today!";
+                messageDiv.textContent = "This appointment has already been made!";
                 messageDiv.style.color = "green";
                 form.style.display = "none";
             } else {
